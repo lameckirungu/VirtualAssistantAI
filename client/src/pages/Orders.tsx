@@ -104,7 +104,7 @@ const Orders: React.FC = () => {
                         <TableCell>{order.customerName || "Anonymous"}</TableCell>
                         <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">{(order.items as any[]).length}</TableCell>
-                        <TableCell className="text-right">${parseFloat(order.total).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">KSh {parseFloat(order.totalKsh).toLocaleString()}</TableCell>
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                       </TableRow>
                     ))

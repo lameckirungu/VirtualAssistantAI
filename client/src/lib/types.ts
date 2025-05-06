@@ -63,6 +63,7 @@ export interface Order {
   orderNumber: string;
   status: "pending" | "processing" | "completed" | "shipped" | "cancelled";
   total: string;
+  totalKsh: string;
   customerName?: string;
   customerEmail?: string;
   items: any[]; // Array of order items

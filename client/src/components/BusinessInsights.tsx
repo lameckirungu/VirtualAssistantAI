@@ -105,10 +105,10 @@ const BusinessInsights: React.FC = () => {
             <div className="mt-2">
               <div className="flex justify-between text-xs text-purple-700">
                 <span>
-                  Total Value: KSH {isLoadingOrders ? "..." : todaysOrders?.totalValue.toFixed(2) || "0.00"}
+                  Total Value: KSh {isLoadingOrders ? "..." : (todaysOrders?.totalValue || 0).toLocaleString() || "0"}
                 </span>
                 <span>
-                  Avg: KSH {isLoadingOrders ? "..." : todaysOrders?.averageValue.toFixed(2) || "0.00"}
+                  Avg: KSh {isLoadingOrders ? "..." : (todaysOrders?.averageValue || 0).toLocaleString() || "0"}
                 </span>
               </div>
             </div>

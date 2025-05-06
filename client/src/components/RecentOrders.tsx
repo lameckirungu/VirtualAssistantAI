@@ -94,7 +94,7 @@ const RecentOrders: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-sm">${parseFloat(order.total).toFixed(2)}</p>
+                  <p className="font-medium text-sm">KSh {parseFloat(order.totalKsh).toLocaleString()}</p>
                   <Badge variant="outline" className={getStatusBadgeClass(order.status)}>
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </Badge>
