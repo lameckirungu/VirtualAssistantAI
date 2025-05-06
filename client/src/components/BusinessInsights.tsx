@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare, Package, ShoppingCart, TrendingUp } from "lucide-react";
+import { MessageSquare, Package, ShoppingCart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { InventorySummary, TodaysOrders } from "@/lib/types";
 
@@ -9,7 +9,7 @@ const BusinessInsights: React.FC = () => {
     queryKey: ["/api/inventory/summary"],
   });
   
-  const { data: conversations, isLoading: isLoadingConversations } = useQuery<{ activeConversations: number }>({
+  const { data: analytics, isLoading: isLoadingAnalytics } = useQuery<{ activeConversations: number }>({
     queryKey: ["/api/analytics"],
   });
   
@@ -17,7 +17,7 @@ const BusinessInsights: React.FC = () => {
     queryKey: ["/api/orders/today"],
   });
   
-  const isLoading = isLoadingInventory || isLoadingConversations || isLoadingOrders;
+  const isLoading = isLoadingInventory || isLoadingAnalytics || isLoadingOrders;
   
   return (
     <Card>
@@ -34,7 +34,7 @@ const BusinessInsights: React.FC = () => {
                   {isLoading ? (
                     <span className="animate-pulse">...</span>
                   ) : (
-                    conversations?.activeConversations || 0
+                    analytics?.activeConversations || 0
                   )}
                 </p>
               </div>
@@ -42,9 +42,9 @@ const BusinessInsights: React.FC = () => {
             </div>
             <div className="mt-2">
               <div className="bg-blue-100 h-1.5 rounded-full w-full overflow-hidden">
-                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: "65%" }}></div>
+                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: "100%" }}></div>
               </div>
-              <p className="text-xs text-blue-700 mt-1">65% customer inquiries, 35% orders</p>
+              <p className="text-xs text-blue-700 mt-1">Active customer conversations</p>
             </div>
           </div>
           
@@ -105,15 +105,11 @@ const BusinessInsights: React.FC = () => {
             <div className="mt-2">
               <div className="flex justify-between text-xs text-purple-700">
                 <span>
-                  Total Value: ${isLoadingOrders ? "..." : todaysOrders?.totalValue.toFixed(2) || "0.00"}
+                  Total Value: KSH {isLoadingOrders ? "..." : todaysOrders?.totalValue.toFixed(2) || "0.00"}
                 </span>
                 <span>
-                  Avg: ${isLoadingOrders ? "..." : todaysOrders?.averageValue.toFixed(2) || "0.00"}
+                  Avg: KSH {isLoadingOrders ? "..." : todaysOrders?.averageValue.toFixed(2) || "0.00"}
                 </span>
-              </div>
-              <div className="flex items-center mt-1">
-                <TrendingUp className="text-green-500" size={12} />
-                <span className="text-xs text-green-600 ml-1">12% vs yesterday</span>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { MessageSquare, BarChart2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import IntentAnalytics from "@/components/IntentAnalytics";
@@ -26,7 +27,7 @@ const Analytics: React.FC = () => {
   
   // Prepare data for intent distribution chart
   const intentData = analytics?.intentCounts
-    ? Object.entries(analytics.intentCounts).map(([name, value]) => ({
+    ? Object.entries(analytics.intentCounts || {}).map(([name, value]) => ({
         name: name
           .split('_')
           .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -54,6 +55,14 @@ const Analytics: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : intentData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                  <div className="mb-4">
+                    <MessageSquare className="h-10 w-10 mx-auto opacity-30" />
+                  </div>
+                  <p className="mb-2">No conversation data available yet</p>
+                  <p className="text-sm">Statistics will appear as customers interact with the assistant</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -90,6 +99,14 @@ const Analytics: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : !analytics ? (
+                <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                  <div className="mb-4">
+                    <BarChart2 className="h-10 w-10 mx-auto opacity-30" />
+                  </div>
+                  <p className="mb-2">No performance data available yet</p>
+                  <p className="text-sm">Statistics will appear after conversations complete</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">

@@ -76,7 +76,7 @@ const IntentAnalytics: React.FC = () => {
               {isLoading ? (
                 <span className="animate-pulse">...</span>
               ) : (
-                `${analytics?.intentAccuracy.toFixed(1)}%`
+                `${analytics?.intentAccuracy ? parseFloat(analytics.intentAccuracy).toFixed(1) : '0.0'}%`
               )}
             </span>
           </div>
