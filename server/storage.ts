@@ -7,7 +7,7 @@ import {
   type Analytics, type InsertAnalytics,
   type Message, messageSchema
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, like, desc, and, gt, gte, or } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
@@ -644,7 +644,8 @@ export class DatabaseStorage implements IStorage {
     // Initialize session store with PostgreSQL
     const PostgresStore = connectPg(session);
     this.sessionStore = new PostgresStore({
-      pool: db.$client,
+      pool: pool,
+      tableName: 'session',
       createTableIfMissing: true,
     });
   }
