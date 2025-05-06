@@ -44,10 +44,16 @@ export class OpenAIService {
         name: result.name,
         confidence: result.confidence
       };
-    } catch (error) {
-      console.error("Error analyzing intent with OpenAI:", error);
-      // Return a fallback intent
-      return { name: "general_inquiry", confidence: 0.5 };
+    } catch (error: any) {
+      // Check if this is a quota error or other OpenAI error
+      if (error?.error?.code === 'insufficient_quota' || error?.code === 'insufficient_quota') {
+        console.error("OpenAI API quota exceeded. Using fallback classifier instead:", error.message);
+      } else {
+        console.error("Error analyzing intent with OpenAI:", error);
+      }
+      
+      // Always throw the error to trigger fallback system
+      throw error;
     }
   }
 
@@ -89,9 +95,16 @@ export class OpenAIService {
       
       // Ensure we have an array, even if empty
       return Array.isArray(result) ? result : [];
-    } catch (error) {
-      console.error("Error extracting entities with OpenAI:", error);
-      return [];
+    } catch (error: any) {
+      // Check if this is a quota error or other OpenAI error
+      if (error?.error?.code === 'insufficient_quota' || error?.code === 'insufficient_quota') {
+        console.error("OpenAI API quota exceeded. Using fallback entity extractor instead:", error.message);
+      } else {
+        console.error("Error extracting entities with OpenAI:", error);
+      }
+      
+      // Always throw the error to trigger fallback system
+      throw error;
     }
   }
 
@@ -141,8 +154,15 @@ export class OpenAIService {
 
       return response.choices[0].message.content || "I'm not sure how to respond to that. Can you please rephrase your question?";
     } catch (error) {
-      console.error("Error generating response with OpenAI:", error);
-      return "I'm having trouble processing your request right now. Please try again later.";
+      // Check if this is a quota error or other OpenAI error
+      if (error?.error?.code === 'insufficient_quota' || error?.code === 'insufficient_quota') {
+        console.error("OpenAI API quota exceeded. Using fallback response generator instead:", error.message);
+      } else {
+        console.error("Error generating response with OpenAI:", error);
+      }
+      
+      // Always throw the error to trigger fallback system
+      throw error;
     }
   }
 }
