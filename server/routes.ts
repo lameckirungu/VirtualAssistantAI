@@ -26,7 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate the input
       const { message, conversationId } = z.object({
         message: z.string(),
-        conversationId: z.string().optional()
+        conversationId: z.string().nullable().optional()
       }).parse(req.body);
       
       // Process the message with OpenAI NLP

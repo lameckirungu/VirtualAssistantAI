@@ -31,10 +31,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", "/api/chat", {
+      // Only include conversationId in the payload if it's not null
+      const payload = {
         message,
-        conversationId,
-      });
+        ...(conversationId ? { conversationId } : {})
+      };
+      const res = await apiRequest("POST", "/api/chat", payload);
       return await res.json();
     },
     onSuccess: (data) => {
