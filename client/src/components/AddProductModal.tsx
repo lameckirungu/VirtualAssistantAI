@@ -85,10 +85,19 @@ export default function AddProductModal({ open, onOpenChange }: AddProductModalP
   // Add product mutation
   const addProductMutation = useMutation({
     mutationFn: async (data: ProductFormValues) => {
-      const res = await apiRequest("POST", "/api/inventory", data);
-      return await res.json();
+      try {
+        console.log("Submitting product data:", data);
+        const res = await apiRequest("POST", "/api/inventory", data);
+        const result = await res.json();
+        console.log("API response:", result);
+        return result;
+      } catch (error) {
+        console.error("Error submitting product:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
+      console.log("Product added successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/summary"] });
       form.reset(defaultValues);
@@ -100,6 +109,7 @@ export default function AddProductModal({ open, onOpenChange }: AddProductModalP
       });
     },
     onError: (error: Error) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Failed to add product",
         description: error.message,
