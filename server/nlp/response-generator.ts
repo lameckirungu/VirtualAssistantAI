@@ -55,14 +55,16 @@ export class ResponseGenerator {
         statusClass = 'text-red-600';
       }
       
-      return `<div class="bg-white p-2 rounded border border-gray-200">
-        <div class="flex justify-between">
-          <span class="font-medium text-sm">${product.name}</span>
-          <span class="${statusClass} text-sm">${statusText}</span>
+      return `<div class="bg-white p-3 rounded border border-gray-200 mb-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="font-medium">${product.name}</div>
+            <div class="text-xs text-gray-500">SKU: ${product.sku}</div>
+          </div>
+          <div class="${statusClass}">${statusText}</div>
         </div>
-        <p class="text-xs text-gray-500">SKU: ${product.sku}</p>
       </div>`;
-    }).join('\n');
+    }).join('');
   }
   
   // Intent handlers
@@ -83,33 +85,44 @@ export class ResponseGenerator {
     const skuEntity = entities.find(e => e.entity === "sku");
     
     let products: Product[] = [];
+    let searchTerm = "";
     
     if (skuEntity) {
       // Search by SKU
-      const product = await storage.getProductBySku(skuEntity.value.toUpperCase());
+      searchTerm = skuEntity.value.toUpperCase();
+      const product = await storage.getProductBySku(searchTerm);
       if (product) products = [product];
     } else if (productEntity) {
       // Search by product name
-      products = await storage.searchProducts(productEntity.value);
+      searchTerm = productEntity.value;
+      products = await storage.searchProducts(searchTerm);
     } else if (categoryEntity) {
       // Search by category
-      products = await storage.getProductsByCategory(categoryEntity.value);
+      searchTerm = categoryEntity.value;
+      products = await storage.getProductsByCategory(searchTerm);
     } else {
       // No specific product mentioned, return all products
       products = await storage.getProducts();
     }
     
     if (products.length === 0) {
-      return "I couldn't find any products matching your query. Could you provide more details or check the spelling?";
+      return `I couldn't find any products matching "${searchTerm}". Could you provide more details or check the spelling?`;
     }
     
-    return `I found ${products.length} ${products.length === 1 ? 'product' : 'products'} in our inventory:
+    let responseText = "";
+    if (searchTerm) {
+      responseText = `I found ${products.length} ${products.length === 1 ? 'product' : 'products'} matching "${searchTerm}":`;
+    } else {
+      responseText = `I found ${products.length} ${products.length === 1 ? 'product' : 'products'} in our inventory:`;
+    }
     
-    <div class="mt-3 space-y-2">
-      ${this.formatProductsHtml(products)}
-    </div>
+    return `${responseText}
     
-    Would you like to place an order or get more information about any of these products?`;
+<div class="mt-3 space-y-2">
+${this.formatProductsHtml(products)}
+</div>
+
+Would you like to place an order or get more information about any of these products?`;
   }
   
   private async handleInventoryRestock(entities: Array<{ entity: string; value: string }>): Promise<string> {
@@ -196,15 +209,51 @@ export class ResponseGenerator {
       return "I couldn't find specific information about that product. Could you provide more details or ask about a different product?";
     }
     
-    return `Here's information about ${product.name} (${product.sku}):
+    let availabilityText = 'Out of stock';
+    let availabilityClass = 'text-red-600';
     
-    ${product.description || 'No detailed description available.'}
+    if (product.status === 'in_stock') {
+      availabilityText = `In stock (${product.quantity} units available)`;
+      availabilityClass = 'text-green-600';
+    } else if (product.status === 'low_stock') {
+      availabilityText = `Low stock (${product.quantity} units available)`;
+      availabilityClass = 'text-amber-600';
+    }
     
-    Price: $${product.price}
-    Availability: ${product.status === 'in_stock' ? `In stock (${product.quantity} units available)` : product.status === 'low_stock' ? `Low stock (${product.quantity} units available)` : 'Out of stock'}
-    ${product.status === 'out_of_stock' && product.nextRestock ? `Expected restock: ${new Date(product.nextRestock).toLocaleDateString()}` : ''}
-    
-    Would you like to know more or place an order for this product?`;
+    const restockInfo = product.status === 'out_of_stock' && product.nextRestock
+      ? `<p>Expected restock: ${new Date(product.nextRestock).toLocaleDateString()}</p>`
+      : '';
+      
+    return `<div class="product-detail">
+  <h3 class="font-medium text-lg mb-2">${product.name}</h3>
+  <p class="text-sm text-gray-700 mb-3">${product.description || 'No detailed description available.'}</p>
+  
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <div class="bg-gray-50 p-2 rounded">
+      <span class="text-xs text-gray-500">SKU</span>
+      <p class="font-medium">${product.sku}</p>
+    </div>
+    <div class="bg-gray-50 p-2 rounded">
+      <span class="text-xs text-gray-500">Category</span>
+      <p class="font-medium">${product.category || 'Uncategorized'}</p>
+    </div>
+  </div>
+  
+  <div class="flex justify-between items-center mb-3">
+    <div>
+      <span class="text-xs text-gray-500">Price</span>
+      <p class="font-medium">KSh ${product.priceKsh}</p>
+    </div>
+    <div class="text-right">
+      <span class="text-xs text-gray-500">Status</span>
+      <p class="font-medium ${availabilityClass}">${availabilityText}</p>
+    </div>
+  </div>
+  
+  ${restockInfo}
+</div>
+
+Would you like to place an order for this product?`;
   }
   
   private handleReturnsRefunds(): string {
