@@ -32,14 +32,8 @@ const IntentAnalytics: React.FC = () => {
     queryKey: ["/api/analytics"],
   });
   
-  // Default intent counts if data is not available
-  const intentCounts = analytics?.intentCounts || {
-    "product_inquiry": 38,
-    "order_status": 24,
-    "inventory_check": 18,
-    "returns_refunds": 12,
-    "other": 8
-  };
+  // Get intent counts from database
+  const intentCounts = analytics?.intentCounts || {};
   
   // Colors for different intents
   const intentColors: Record<string, string> = {
