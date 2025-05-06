@@ -1,6 +1,8 @@
 import React from "react";
 import { Menu, HelpCircle, Bell } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,28 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
+    setLocation('/auth');
+  };
+  
+  // Get initials from user's full name or username
+  const getInitials = (): string => {
+    if (user?.fullName) {
+      return user.fullName
+        .split(' ')
+        .map(name => name[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+    }
+    
+    return user?.username.substring(0, 2).toUpperCase() || 'UK';
+  };
+  
   return (
     <header className="bg-white shadow-sm z-10">
       <div className="flex items-center justify-between h-16 px-6">
@@ -69,17 +93,23 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
             <DropdownMenuTrigger asChild>
               <button className="focus:outline-none">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>AK</AvatarFallback>
+                  <AvatarFallback>{getInitials()}</AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Alex Kariuki</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.fullName || user?.username}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">Log out</DropdownMenuItem>
+              <DropdownMenuItem 
+                className="cursor-pointer text-red-600 focus:text-red-600" 
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+              >
+                {logoutMutation.isPending ? 'Logging out...' : 'Log out'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
