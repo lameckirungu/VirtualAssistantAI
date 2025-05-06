@@ -25,13 +25,15 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   sku: text("sku").notNull().unique(),
   description: text("description"),
-  price: numeric("price").notNull(),
+  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  priceKsh: numeric("price_ksh", { precision: 10, scale: 2 }).notNull(),
   quantity: integer("quantity").notNull().default(0),
   status: text("status").default("in_stock"), // in_stock, low_stock, out_of_stock
   category: text("category"),
   reorderPoint: integer("reorder_point").default(5),
   nextRestock: timestamp("next_restock"),
   imageUrl: text("image_url"),
+  isPopular: boolean("is_popular").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -41,12 +43,14 @@ export const insertProductSchema = createInsertSchema(products).pick({
   sku: true,
   description: true,
   price: true,
+  priceKsh: true,
   quantity: true,
   status: true,
   category: true,
   reorderPoint: true,
   nextRestock: true,
   imageUrl: true,
+  isPopular: true,
 });
 
 // Order schema
@@ -54,10 +58,12 @@ export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
   status: text("status").default("pending"), // pending, processing, completed, shipped, cancelled
-  total: numeric("total").notNull(),
+  total: numeric("total", { precision: 10, scale: 2 }).notNull(),
+  totalKsh: numeric("total_ksh", { precision: 10, scale: 2 }).notNull(),
   customerName: text("customer_name"),
   customerEmail: text("customer_email"),
   items: json("items").notNull(), // Array of order items
+  userId: integer("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -66,9 +72,11 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   orderNumber: true,
   status: true,
   total: true,
+  totalKsh: true,
   customerName: true,
   customerEmail: true,
   items: true,
+  userId: true,
 });
 
 // Conversation schema

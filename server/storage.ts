@@ -7,6 +7,10 @@ import {
   type Analytics, type InsertAnalytics,
   type Message, messageSchema
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, like, desc, and, gt, gte, or } from "drizzle-orm";
+import connectPg from "connect-pg-simple";
+import session from "express-session";
 
 // Storage interface with CRUD methods for all models
 export interface IStorage {
@@ -371,4 +375,205 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // Session store for authentication
+  public sessionStore: session.Store;
+
+  constructor() {
+    // Initialize session store with PostgreSQL
+    const PostgresStore = connectPg(session);
+    this.sessionStore = new PostgresStore({
+      pool: db.client,
+      createTableIfMissing: true,
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+  
+  // Product methods
+  async getProducts(): Promise<Product[]> {
+    return await db.select().from(products);
+  }
+  
+  async getProduct(id: number): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+  
+  async getProductBySku(sku: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.sku, sku));
+    return product;
+  }
+  
+  async searchProducts(query: string): Promise<Product[]> {
+    const searchTerm = `%${query}%`;
+    return await db.select().from(products).where(
+      or(
+        like(products.name, searchTerm),
+        like(products.sku, searchTerm),
+        like(products.description, searchTerm)
+      )
+    );
+  }
+  
+  async getProductsByCategory(category: string): Promise<Product[]> {
+    return await db.select().from(products).where(eq(products.category, category));
+  }
+  
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [newProduct] = await db.insert(products).values(product).returning();
+    return newProduct;
+  }
+  
+  async updateProduct(id: number, updates: Partial<Product>): Promise<Product | undefined> {
+    const [updatedProduct] = await db
+      .update(products)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return updatedProduct;
+  }
+  
+  async deleteProduct(id: number): Promise<boolean> {
+    const result = await db.delete(products).where(eq(products.id, id));
+    return result.rowCount > 0;
+  }
+  
+  // Order methods
+  async getOrders(): Promise<Order[]> {
+    return await db.select().from(orders);
+  }
+  
+  async getRecentOrders(limit: number): Promise<Order[]> {
+    return await db
+      .select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+  }
+  
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
+  }
+  
+  async getOrderByNumber(orderNumber: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.orderNumber, orderNumber));
+    return order;
+  }
+  
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const [newOrder] = await db.insert(orders).values(order).returning();
+    return newOrder;
+  }
+  
+  async updateOrder(id: number, updates: Partial<Order>): Promise<Order | undefined> {
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return updatedOrder;
+  }
+  
+  // Conversation methods
+  async getConversations(): Promise<Conversation[]> {
+    return await db.select().from(conversations);
+  }
+  
+  async getActiveConversations(): Promise<Conversation[]> {
+    return await db.select().from(conversations).where(eq(conversations.active, true));
+  }
+  
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conversation;
+  }
+  
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const [newConversation] = await db.insert(conversations).values(conversation).returning();
+    return newConversation;
+  }
+  
+  async updateConversation(id: number, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [updatedConversation] = await db
+      .update(conversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversations.id, id))
+      .returning();
+    return updatedConversation;
+  }
+  
+  async addMessageToConversation(id: number, message: Message): Promise<Conversation | undefined> {
+    // First get the current conversation
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, id));
+    
+    if (!conversation) return undefined;
+    
+    // Validate the message
+    const validatedMessage = messageSchema.parse(message);
+    
+    // Append the new message to existing messages
+    const messages = [...(conversation.messages as Message[]), validatedMessage];
+    
+    // Update the conversation with new messages
+    const [updatedConversation] = await db
+      .update(conversations)
+      .set({ 
+        messages, 
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, id))
+      .returning();
+    
+    return updatedConversation;
+  }
+  
+  // Analytics methods
+  async getAnalytics(): Promise<Analytics[]> {
+    return await db.select().from(analytics);
+  }
+  
+  async getLatestAnalytics(): Promise<Analytics | undefined> {
+    const [latestAnalytics] = await db
+      .select()
+      .from(analytics)
+      .orderBy(desc(analytics.date))
+      .limit(1);
+    return latestAnalytics;
+  }
+  
+  async createAnalytics(analyticsData: InsertAnalytics): Promise<Analytics> {
+    const [newAnalytics] = await db.insert(analytics).values(analyticsData).returning();
+    return newAnalytics;
+  }
+  
+  async updateAnalytics(id: number, updates: Partial<Analytics>): Promise<Analytics | undefined> {
+    const [updatedAnalytics] = await db
+      .update(analytics)
+      .set(updates)
+      .where(eq(analytics.id, id))
+      .returning();
+    return updatedAnalytics;
+  }
+}
+
+// Use the database storage implementation
+export const storage = new DatabaseStorage();
