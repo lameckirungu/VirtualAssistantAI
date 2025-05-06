@@ -14,18 +14,28 @@ import Orders from "@/pages/Orders";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/auth-page";
+import { JSX } from "react";
+
+// Wrapper components to fix type issues
+const DashboardWrapper = (): JSX.Element => <Dashboard />;
+const InventoryWrapper = (): JSX.Element => <Inventory />;
+const OrdersWrapper = (): JSX.Element => <Orders />;
+const AnalyticsWrapper = (): JSX.Element => <Analytics />;
+const SettingsWrapper = (): JSX.Element => <Settings />;
+const NotFoundWrapper = (): JSX.Element => <NotFound />;
+const AuthPageWrapper = (): JSX.Element => <AuthPage />;
 
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/inventory" component={Inventory} />
-      <ProtectedRoute path="/orders" component={Orders} />
-      <ProtectedRoute path="/analytics" component={Analytics} />
-      <ProtectedRoute path="/settings" component={Settings} />
-      <Route path="/auth" component={AuthPage} />
+      <ProtectedRoute path="/" component={DashboardWrapper} />
+      <ProtectedRoute path="/inventory" component={InventoryWrapper} />
+      <ProtectedRoute path="/orders" component={OrdersWrapper} />
+      <ProtectedRoute path="/analytics" component={AnalyticsWrapper} />
+      <ProtectedRoute path="/settings" component={SettingsWrapper} />
+      <Route path="/auth" component={AuthPageWrapper} />
       {/* Fallback to 404 */}
-      <Route component={NotFound} />
+      <Route component={NotFoundWrapper} />
     </Switch>
   );
 }
@@ -33,7 +43,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="light" storageKey="business-assistant-theme">
         <AuthProvider>
           <ChatProvider>
             <TooltipProvider>

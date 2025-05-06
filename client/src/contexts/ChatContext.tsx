@@ -1,122 +1,99 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
-import { Message, Intent, ChatResponse } from "@/lib/types";
-import { apiRequest } from "@/lib/queryClient";
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-interface ChatContextType {
-  messages: Message[];
-  conversationId: number | null;
-  isLoading: boolean;
-  lastIntent: Intent | null;
-  sendMessage: (content: string) => Promise<void>;
-  clearMessages: () => void;
-}
-
-const ChatContext = createContext<ChatContextType | undefined>(undefined);
-
-export const useChat = () => {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error("useChat must be used within a ChatProvider");
-  }
-  return context;
+// Types
+export type MessageType = {
+  id: string;
+  content: string;
+  sender: "user" | "bot";
+  timestamp: Date;
+  intent?: string;
+  entities?: Array<{ entity: string; value: string }>;
 };
 
-interface ChatProviderProps {
-  children: React.ReactNode;
-}
+type ChatContextType = {
+  messages: MessageType[];
+  conversationId: string | null;
+  sendMessage: (message: string) => void;
+  isLoading: boolean;
+  clearChat: () => void;
+};
 
-export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId, setConversationId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [lastIntent, setLastIntent] = useState<Intent | null>(null);
+const ChatContext = createContext<ChatContextType | null>(null);
 
-  // Add initial welcome message
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([
-        {
-          id: "welcome",
-          sender: "bot",
-          content: "Welcome to BusinessAI Assistant! I can help you with inventory management, customer support, and sales assistance. How can I help you today?",
-          timestamp: new Date()
-        }
-      ]);
-    }
-  }, [messages.length]);
+export function ChatProvider({ children }: { children: ReactNode }) {
+  const [messages, setMessages] = useState<MessageType[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const sendMessage = useCallback(async (content: string) => {
-    // Ignore empty messages
-    if (!content.trim()) return;
-
-    // Create a user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      sender: "user",
-      content,
-      timestamp: new Date()
-    };
-
-    // Add user message to the list
-    setMessages(prevMessages => [...prevMessages, userMessage]);
-    setIsLoading(true);
-
-    try {
-      // Send to backend
-      const response = await apiRequest("POST", "/api/chat", {
-        message: content,
-        conversationId: conversationId
+  const sendMessageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", "/api/chat", {
+        message,
+        conversationId,
       });
-
-      const data: ChatResponse = await response.json();
-
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // Add the bot's response to the messages
+      setMessages((prev) => [...prev, data.message]);
+      
       // Update conversation ID if it's a new conversation
-      if (!conversationId && data.conversationId) {
-        setConversationId(data.conversationId);
+      if (data.conversationId && !conversationId) {
+        setConversationId(data.conversationId.toString());
       }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error sending message",
+        description: "Failed to communicate with the assistant. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
-      // Update last detected intent
-      if (data.intent) {
-        setLastIntent(data.intent);
-      }
-
-      // Add bot response to the list
-      setMessages(prevMessages => [...prevMessages, data.message]);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      
-      // Add error message
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        sender: "bot",
-        content: "Sorry, I encountered an error processing your request. Please try again.",
-        timestamp: new Date()
-      };
-      
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId]);
-
-  const clearMessages = useCallback(() => {
+  const clearChat = () => {
     setMessages([]);
     setConversationId(null);
-    setLastIntent(null);
-  }, []);
+  };
+
+  const sendMessage = (message: string) => {
+    // Add user message to the list immediately
+    const userMessage: MessageType = {
+      id: uuidv4(),
+      content: message,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    
+    setMessages((prev) => [...prev, userMessage]);
+    
+    // Send to the API
+    sendMessageMutation.mutate(message);
+  };
 
   return (
     <ChatContext.Provider
       value={{
         messages,
         conversationId,
-        isLoading,
-        lastIntent,
         sendMessage,
-        clearMessages
+        isLoading: sendMessageMutation.isPending,
+        clearChat,
       }}
     >
       {children}
     </ChatContext.Provider>
   );
-};
+}
+
+export function useChat() {
+  const context = useContext(ChatContext);
+  if (!context) {
+    throw new Error("useChat must be used within a ChatProvider");
+  }
+  return context;
+}

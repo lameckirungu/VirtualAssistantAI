@@ -14,6 +14,9 @@ import session from "express-session";
 
 // Storage interface with CRUD methods for all models
 export interface IStorage {
+  // Session store for authentication
+  sessionStore: session.Store;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -59,6 +62,8 @@ export class MemStorage implements IStorage {
   private conversations: Map<number, Conversation>;
   private analyticsData: Map<number, Analytics>;
   
+  public sessionStore: session.Store;
+  
   private userId: number = 1;
   private productId: number = 1;
   private orderId: number = 1;
@@ -72,78 +77,334 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
     this.analyticsData = new Map();
     
+    // Initialize memory-based session store
+    const MemoryStore = require('memorystore')(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
+    
     // Initialize with some sample data for development
     this.initializeData();
   }
   
   private initializeData() {
-    // Add sample products
-    const sampleProducts: InsertProduct[] = [
+    // Add Kenya-specific products
+    const kenyaProducts: InsertProduct[] = [
       {
-        name: "SoundWave Pro X",
-        sku: "WH-SWP-100",
-        description: "Premium wireless headphones with noise cancellation",
-        price: "129.99",
-        quantity: 24,
+        name: "M-KOPA Solar Home System",
+        sku: "KEN-MKP-001",
+        description: "Complete solar power system for homes with lights, radio, and phone charging",
+        price: "99.99",
+        priceKsh: "12500",
+        quantity: 45,
         status: "in_stock",
-        category: "Electronics",
+        category: "Solar",
         reorderPoint: 10,
         nextRestock: null,
-        imageUrl: null
+        imageUrl: null,
+        isPopular: true
       },
       {
-        name: "AudioPeak Max",
-        sku: "WH-APM-200",
-        description: "Wireless headphones with enhanced bass",
-        price: "89.99",
+        name: "Jikokoa Charcoal Stove",
+        sku: "KEN-JKS-002",
+        description: "Energy-efficient charcoal cooking stove that reduces fuel consumption by 50%",
+        price: "39.99",
+        priceKsh: "5000",
+        quantity: 78,
+        status: "in_stock",
+        category: "Kitchen",
+        reorderPoint: 15,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Kenyan Premium Coffee Beans",
+        sku: "KEN-COF-003",
+        description: "Premium AA grade Kenyan coffee beans from Central Highlands, 500g pack",
+        price: "14.99",
+        priceKsh: "1875",
+        quantity: 120,
+        status: "in_stock",
+        category: "Food",
+        reorderPoint: 30,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Maasai Beaded Necklace",
+        sku: "KEN-BDN-004",
+        description: "Handcrafted traditional Maasai beaded necklace in vibrant colors",
+        price: "29.99",
+        priceKsh: "3750",
+        quantity: 35,
+        status: "in_stock",
+        category: "Crafts",
+        reorderPoint: 10,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Kiondo Basket Bag",
+        sku: "KEN-KIO-005",
+        description: "Handwoven sisal and leather basket bag, traditional Kenyan craft",
+        price: "49.99",
+        priceKsh: "6250",
+        quantity: 25,
+        status: "in_stock",
+        category: "Crafts",
+        reorderPoint: 8,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Kikoy Beach Towel",
+        sku: "KEN-KIK-006",
+        description: "Traditional Kenyan cotton kikoy fabric, perfect for beach or home use",
+        price: "19.99",
+        priceKsh: "2500",
+        quantity: 60,
+        status: "in_stock",
+        category: "Textiles",
+        reorderPoint: 15,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Kenyan Tea Leaves",
+        sku: "KEN-TEA-007",
+        description: "Premium loose leaf Kenyan black tea from Central Highlands, 250g pack",
+        price: "8.99",
+        priceKsh: "1125",
+        quantity: 95,
+        status: "in_stock",
+        category: "Food",
+        reorderPoint: 20,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Maasai Shuka Blanket",
+        sku: "KEN-MSB-008",
+        description: "Traditional red checked Maasai shuka blanket/wrap",
+        price: "34.99",
+        priceKsh: "4375",
+        quantity: 40,
+        status: "in_stock",
+        category: "Textiles",
+        reorderPoint: 10,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Soapstone Sculpture",
+        sku: "KEN-SSS-009",
+        description: "Hand-carved Kisii soapstone animal figurine",
+        price: "24.99",
+        priceKsh: "3125",
+        quantity: 30,
+        status: "in_stock",
+        category: "Crafts",
+        reorderPoint: 8,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Safari Hat",
+        sku: "KEN-SFH-010",
+        description: "Wide-brimmed safari hat, perfect for Kenyan safaris",
+        price: "22.99",
+        priceKsh: "2875",
+        quantity: 50,
+        status: "in_stock",
+        category: "Clothing",
+        reorderPoint: 12,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Maize Flour (Unga)",
+        sku: "KEN-UNG-011",
+        description: "Premium white maize flour for making ugali, 2kg package",
+        price: "4.99",
+        priceKsh: "625",
         quantity: 3,
         status: "low_stock",
-        category: "Electronics",
-        reorderPoint: 5,
-        nextRestock: null,
-        imageUrl: null
+        category: "Food",
+        reorderPoint: 20,
+        nextRestock: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        imageUrl: null,
+        isPopular: true
       },
       {
-        name: "BassBoost Elite",
-        sku: "WH-BBE-300",
-        description: "Premium bass-focused wireless headphones",
-        price: "149.99",
+        name: "Recycled Flip Flops Art",
+        sku: "KEN-FFA-012",
+        description: "Colorful animal figurines made from recycled flip-flops",
+        price: "18.99",
+        priceKsh: "2375",
+        quantity: 25,
+        status: "in_stock",
+        category: "Crafts",
+        reorderPoint: 8,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "African Print Fabric",
+        sku: "KEN-APF-013",
+        description: "Vibrant Ankara/Kitenge fabric, 2 yards",
+        price: "15.99",
+        priceKsh: "2000",
+        quantity: 65,
+        status: "in_stock",
+        category: "Textiles",
+        reorderPoint: 15,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Kenyan Honey",
+        sku: "KEN-HON-014",
+        description: "Pure natural honey from Kenyan highlands, 500g jar",
+        price: "12.99",
+        priceKsh: "1625",
+        quantity: 2,
+        status: "low_stock",
+        category: "Food",
+        reorderPoint: 10,
+        nextRestock: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Akala Sandals",
+        sku: "KEN-AKL-015",
+        description: "Traditional Kenyan sandals made from recycled tires",
+        price: "16.99",
+        priceKsh: "2125",
+        quantity: 40,
+        status: "in_stock",
+        category: "Footwear",
+        reorderPoint: 10,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Wooden Salad Servers",
+        sku: "KEN-WSS-016",
+        description: "Hand-carved olive wood salad servers",
+        price: "19.99",
+        priceKsh: "2500",
+        quantity: 35,
+        status: "in_stock",
+        category: "Kitchen",
+        reorderPoint: 10,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Masai Beaded Belt",
+        sku: "KEN-MBB-017",
+        description: "Colorful handcrafted Masai beaded belt",
+        price: "27.99",
+        priceKsh: "3500",
         quantity: 0,
         status: "out_of_stock",
-        category: "Electronics",
+        category: "Clothing",
         reorderPoint: 5,
-        nextRestock: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-        imageUrl: null
+        nextRestock: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Coconut Oil",
+        sku: "KEN-CCO-018",
+        description: "Cold-pressed virgin coconut oil from Kenyan coast, 250ml",
+        price: "9.99",
+        priceKsh: "1250",
+        quantity: 28,
+        status: "in_stock",
+        category: "Health",
+        reorderPoint: 10,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: false
+      },
+      {
+        name: "Kanga Fabric",
+        sku: "KEN-KNG-019",
+        description: "Traditional Kanga cotton fabric with proverb, set of 2",
+        price: "23.99",
+        priceKsh: "3000",
+        quantity: 45,
+        status: "in_stock",
+        category: "Textiles",
+        reorderPoint: 12,
+        nextRestock: null,
+        imageUrl: null,
+        isPopular: true
+      },
+      {
+        name: "Soapstone Chess Set",
+        sku: "KEN-SCS-020",
+        description: "Hand-carved Kisii soapstone chess set with African motifs",
+        price: "59.99",
+        priceKsh: "7500",
+        quantity: 0,
+        status: "out_of_stock",
+        category: "Crafts",
+        reorderPoint: 5,
+        nextRestock: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        imageUrl: null,
+        isPopular: false
       }
     ];
     
-    sampleProducts.forEach(product => this.createProduct(product));
+    kenyaProducts.forEach(product => this.createProduct(product));
     
-    // Add sample orders
+    // Add sample orders for Kenya with KSH pricing
     const sampleOrders: InsertOrder[] = [
       {
         orderNumber: "38291",
         status: "completed",
         total: "124.95",
+        totalKsh: "15619",
         customerName: "John Doe",
         customerEmail: "john.doe@example.com",
-        items: [{ productId: 1, quantity: 1, price: "124.95" }]
+        items: [{ productId: 1, quantity: 1, price: "124.95", priceKsh: "15619" }]
       },
       {
         orderNumber: "38290",
         status: "processing",
         total: "89.99",
+        totalKsh: "11249",
         customerName: "Jane Smith",
         customerEmail: "jane.smith@example.com",
-        items: [{ productId: 2, quantity: 1, price: "89.99" }]
+        items: [{ productId: 2, quantity: 1, price: "89.99", priceKsh: "11249" }]
       },
       {
         orderNumber: "38289",
         status: "shipped",
         total: "245.50",
+        totalKsh: "30688",
         customerName: "Bob Johnson",
         customerEmail: "bob.johnson@example.com",
-        items: [{ productId: 3, quantity: 1, price: "149.99" }, { productId: 2, quantity: 1, price: "89.99" }]
+        items: [
+          { productId: 3, quantity: 1, price: "149.99", priceKsh: "18749" }, 
+          { productId: 2, quantity: 1, price: "89.99", priceKsh: "11249" }
+        ]
       }
     ];
     
@@ -153,16 +414,16 @@ export class MemStorage implements IStorage {
     const sampleAnalytics: InsertAnalytics = {
       date: new Date(),
       intentCounts: {
-        "product_inquiry": 38,
-        "order_status": 24,
-        "inventory_check": 18,
-        "returns_refunds": 12,
-        "other": 8
+        "product_inquiry": "38",
+        "order_status": "24",
+        "inventory_check": "18",
+        "returns_refunds": "12",
+        "other": "8"
       },
-      intentAccuracy: 94.7,
-      activeConversations: 12,
-      completedConversations: 154,
-      avgResponseTime: 1.5
+      intentAccuracy: "94.7",
+      activeConversations: "12",
+      completedConversations: "154",
+      avgResponseTime: "1.5"
     };
     
     this.createAnalytics(sampleAnalytics);
