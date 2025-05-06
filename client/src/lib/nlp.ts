@@ -37,12 +37,17 @@ export const extractHtmlContent = (content: string): {
   text: string; 
   html: string | null;
 } => {
-  const divMatch = content.match(/<div[^>]*>([\s\S]*?)<\/div>/i);
+  // Check if the content contains any HTML tags
+  const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
   
-  if (divMatch) {
-    // Extract the HTML part and the text part
-    const html = divMatch[0];
-    const text = content.replace(html, '').trim();
+  if (hasHtmlTags) {
+    // Extract the text part (everything before the first HTML tag)
+    const firstTagIndex = content.indexOf('<');
+    const text = firstTagIndex > 0 ? content.substring(0, firstTagIndex).trim() : '';
+    
+    // Extract all HTML content
+    const html = firstTagIndex >= 0 ? content.substring(firstTagIndex) : content;
+    
     return { text, html };
   }
   
