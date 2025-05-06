@@ -644,7 +644,9 @@ export class DatabaseStorage implements IStorage {
     // Initialize session store with PostgreSQL
     const PostgresStore = connectPg(session);
     this.sessionStore = new PostgresStore({
-      pool: pool,
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
       tableName: 'session',
       createTableIfMissing: true,
     });
