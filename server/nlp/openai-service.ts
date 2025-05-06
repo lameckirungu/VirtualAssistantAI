@@ -38,7 +38,8 @@ export class OpenAIService {
         response_format: { type: "json_object" }
       });
 
-      const result = JSON.parse(response.choices[0].message.content);
+      const content = response.choices[0].message.content || '{"name":"general_inquiry","confidence":0.5}';
+      const result = JSON.parse(content);
 
       return {
         name: result.name,
@@ -91,7 +92,8 @@ export class OpenAIService {
         response_format: { type: "json_object" }
       });
 
-      const result = JSON.parse(response.choices[0].message.content);
+      const content = response.choices[0].message.content || '[]';
+      const result = JSON.parse(content);
       
       // Ensure we have an array, even if empty
       return Array.isArray(result) ? result : [];
@@ -153,7 +155,7 @@ export class OpenAIService {
       });
 
       return response.choices[0].message.content || "I'm not sure how to respond to that. Can you please rephrase your question?";
-    } catch (error) {
+    } catch (error: any) {
       // Check if this is a quota error or other OpenAI error
       if (error?.error?.code === 'insufficient_quota' || error?.code === 'insufficient_quota') {
         console.error("OpenAI API quota exceeded. Using fallback response generator instead:", error.message);
