@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/lib/types";
+import AddProductModal from "@/components/AddProductModal";
 
 const Inventory: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   const { data: products, isLoading, refetch } = useQuery<Product[]>({
     queryKey: ["/api/inventory"],
@@ -67,12 +69,17 @@ const Inventory: React.FC = () => {
               <RefreshCw size={18} />
             </Button>
             
-            <Button>
+            <Button onClick={() => setIsAddModalOpen(true)}>
               <Plus size={16} className="mr-2" />
               Add Product
             </Button>
           </div>
         </div>
+        
+        <AddProductModal 
+          open={isAddModalOpen}
+          onOpenChange={setIsAddModalOpen}
+        />
         
         <Card>
           <CardHeader className="py-4">
@@ -103,7 +110,7 @@ const Inventory: React.FC = () => {
                       <TableRow key={product.id}>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.sku}</TableCell>
-                        <TableCell className="text-right">${parseFloat(product.price).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">KSH {parseFloat(product.priceKsh).toFixed(2)}</TableCell>
                         <TableCell className="text-right">{product.quantity}</TableCell>
                         <TableCell>{getStatusBadge(product.status)}</TableCell>
                         <TableCell>{product.category || "-"}</TableCell>

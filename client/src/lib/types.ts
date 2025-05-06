@@ -32,14 +32,30 @@ export interface Product {
   sku: string;
   description?: string;
   price: string;
+  priceKsh: string;  // Added this field
   quantity: number;
   status: "in_stock" | "low_stock" | "out_of_stock";
   category?: string;
   reorderPoint?: number;
   nextRestock?: string | null;
   imageUrl?: string | null;
+  isPopular?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductFormValues {
+  name: string;
+  sku: string;
+  description: string;
+  price: string;
+  priceKsh: string;
+  quantity: number;
+  status: "in_stock" | "low_stock" | "out_of_stock";
+  category: string;
+  reorderPoint: number;
+  imageUrl: string;
+  isPopular: boolean;
 }
 
 export interface Order {
