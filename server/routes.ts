@@ -1,16 +1,21 @@
-import express, { type Express, Request, Response } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { intentClassifier } from "./nlp/intent-classifier";
 import { entityExtractor } from "./nlp/entity-extractor";
 import { responseGenerator } from "./nlp/response-generator";
+import { openaiService } from "./nlp/openai-service";
 import { inventoryService } from "./services/inventory-service";
 import { orderService } from "./services/order-service";
 import { v4 as uuidv4 } from "uuid";
 import { messageSchema, intentSchema, insertProductSchema, insertOrderSchema } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication
+  setupAuth(app);
+  
   // API prefix
   const apiRouter = express.Router();
   app.use("/api", apiRouter);
@@ -24,10 +29,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationId: z.string().optional()
       }).parse(req.body);
       
-      // Process the message with NLP
-      const intent = intentClassifier.classify(message);
-      const extractedEntities = entityExtractor.extractEntities(message);
-      const formattedEntities = entityExtractor.formatEntities(extractedEntities);
+      // Process the message with OpenAI NLP
+      let intent;
+      let formattedEntities = [];
+      
+      try {
+        // Try to use OpenAI for intent classification and entity extraction
+        intent = await openaiService.analyzeIntent(message);
+        formattedEntities = await openaiService.extractEntities(message);
+      } catch (error) {
+        // Fallback to rule-based classifiers if OpenAI fails
+        console.warn("OpenAI service failed, using fallback classifiers:", error);
+        intent = intentClassifier.classify(message);
+        const extractedEntities = entityExtractor.extractEntities(message);
+        formattedEntities = entityExtractor.formatEntities(extractedEntities);
+      }
       
       // Get conversation context or create new
       let conversation;
@@ -36,35 +52,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate response based on intent and entities
-      const response = await responseGenerator.generateResponse(
-        intent, 
-        formattedEntities,
-        conversation?.messages || []
-      );
+      let response;
+      try {
+        // Try to use OpenAI for response generation
+        response = await openaiService.generateResponse(
+          intent, 
+          formattedEntities,
+          conversation?.messages || []
+        );
+      } catch (error) {
+        // Fallback to rule-based response generator if OpenAI fails
+        console.warn("OpenAI response generation failed, using fallback:", error);
+        response = await responseGenerator.generateResponse(
+          intent, 
+          formattedEntities,
+          conversation?.messages || []
+        );
+      }
       
-      // Create user message
-      const userMessage = {
+      // Create user message with type safety
+      const userMessage = messageSchema.parse({
         id: uuidv4(),
-        sender: "user",
+        sender: "user" as const,
         content: message,
         timestamp: new Date(),
         entities: formattedEntities,
         intent: intent.name
-      };
+      });
       
-      // Create bot message
-      const botMessage = {
+      // Create bot message with type safety
+      const botMessage = messageSchema.parse({
         id: uuidv4(),
-        sender: "bot",
+        sender: "bot" as const,
         content: response,
         timestamp: new Date(),
         intent: intent.name
-      };
+      });
       
       // Update or create conversation
       if (conversation) {
         await storage.addMessageToConversation(conversation.id, userMessage);
-        conversation = await storage.addMessageToConversation(conversation.id, botMessage);
+        const updatedConversation = await storage.addMessageToConversation(conversation.id, botMessage);
+        if (updatedConversation) {
+          conversation = updatedConversation;
+        }
       } else {
         // Create new conversation
         conversation = await storage.createConversation({

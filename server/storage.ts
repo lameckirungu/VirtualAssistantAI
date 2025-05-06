@@ -383,7 +383,7 @@ export class DatabaseStorage implements IStorage {
     // Initialize session store with PostgreSQL
     const PostgresStore = connectPg(session);
     this.sessionStore = new PostgresStore({
-      pool: db.client,
+      pool: db.$client,
       createTableIfMissing: true,
     });
   }
@@ -450,7 +450,7 @@ export class DatabaseStorage implements IStorage {
   
   async deleteProduct(id: number): Promise<boolean> {
     const result = await db.delete(products).where(eq(products.id, id));
-    return result.rowCount > 0;
+    return result !== null && result.rowCount > 0;
   }
   
   // Order methods
