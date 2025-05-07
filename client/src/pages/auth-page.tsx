@@ -125,7 +125,7 @@ export default function AuthPage() {
                     <Input 
                       id="fullName" 
                       name="fullName" 
-                      placeholder="John Doe" 
+                      placeholder="John Kamau" 
                     />
                   </div>
                   <div className="space-y-2">
